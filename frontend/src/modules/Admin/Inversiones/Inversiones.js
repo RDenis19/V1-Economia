@@ -1,7 +1,9 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { Table, Input, Button, Space, Pagination } from 'antd';
 import { EditOutlined, DeleteOutlined, EyeOutlined, PlusOutlined, FilterOutlined } from '@ant-design/icons';
-import { fetchInvestments } from '../../../utils/api'; 
+import AgregarInversion from './AgregarInversion';
+import ActualizarInversion from './ActualizarInversion';
+import VistaInversion from './VistaInversion';
 
 const Inversiones = () => {
   const [data, setData] = useState([]);
@@ -9,27 +11,35 @@ const Inversiones = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalRecords, setTotalRecords] = useState(0);
   const [searchText, setSearchText] = useState('');
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  const [selectedInvestmentId, setSelectedInvestmentId] = useState(null);
 
   // Función para obtener inversiones
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(() => {
     setLoading(true);
-    try {
-      const result = await fetchInvestments();
-      const filteredData = result.investments.filter(investment =>
-        investment.idProyecto.toLowerCase().includes(searchText.toLowerCase())
-      );
-      setData(filteredData);
-      setTotalRecords(result.total);
-    } catch (error) {
-      console.error('Error fetching investments:', error);
-    } finally {
-      setLoading(false);
-    }
+    const inversionesGuardadas = JSON.parse(localStorage.getItem('inversiones')) || [];
+    const filteredData = inversionesGuardadas.filter(investment =>
+      investment.idProyecto.toLowerCase().includes(searchText.toLowerCase())
+    );
+    setData(filteredData);
+    setTotalRecords(filteredData.length);
+    setLoading(false);
   }, [searchText]);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  const handleAddInvestment = (newInvestment) => {
+    setData([newInvestment, ...data]);
+    setTotalRecords(totalRecords + 1);
+  };
+
+  const handleInvestmentUpdated = () => {
+    fetchData();
+  };
 
   const columns = [
     {
@@ -67,9 +77,21 @@ const Inversiones = () => {
       key: 'accion',
       render: (_, record) => (
         <Space size="middle">
-          <Button icon={<EditOutlined />} />
+          <Button
+            icon={<EditOutlined />}
+            onClick={() => {
+              setSelectedInvestmentId(record.id);
+              setIsEditModalOpen(true);
+            }}
+          />
           <Button icon={<DeleteOutlined />} />
-          <Button icon={<EyeOutlined />} />
+          <Button
+            icon={<EyeOutlined />}
+            onClick={() => {
+              setSelectedInvestmentId(record.id);
+              setIsViewModalOpen(true);
+            }}
+          />
         </Space>
       ),
     },
@@ -87,7 +109,13 @@ const Inversiones = () => {
         />
         <Space>
           <Button icon={<FilterOutlined />}>Filtrar</Button>
-          <Button type="primary" icon={<PlusOutlined />}>Crear Inversión</Button>
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={() => setIsAddModalOpen(true)}
+          >
+            Crear Inversión
+          </Button>
         </Space>
       </Space>
       <Table
@@ -103,6 +131,22 @@ const Inversiones = () => {
         total={totalRecords}
         pageSize={8}
         onChange={(page) => setCurrentPage(page)}
+      />
+      <AgregarInversion
+        open={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        onInvestmentAdded={handleAddInvestment}
+      />
+      <ActualizarInversion
+        open={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        investmentId={selectedInvestmentId}
+        onInvestmentUpdated={handleInvestmentUpdated}
+      />
+      <VistaInversion
+        open={isViewModalOpen}
+        onClose={() => setIsViewModalOpen(false)}
+        investmentId={selectedInvestmentId}
       />
     </div>
   );
